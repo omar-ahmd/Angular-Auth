@@ -1,4 +1,5 @@
 const express = require('express')
+const jwt = require('jsonwebtoken')
 const router = express.Router()
 const mongoose = require('mongoose')
 const db = "mongodb+srv://dbOmar:thebestking12++@cluster0.zhwpl.mongodb.net/dbName?retryWrites=true&w=majority"
@@ -10,6 +11,27 @@ mongoose.connect(db , { useNewUrlParser: true } ,err => {
 		console.log('Connected to mongodb')
 	}
 })
+
+
+function verifyToken(req, res, next) {
+	if(!req.headers.authorization) {
+	  return res.status(401).send('Unauthorized request')
+	}
+	
+	let token = req.headers.authorization.split(' ')[1]
+	if(token === 'null') {
+	  return res.status(401).send('Unauthorized request')    
+	}
+	let payload = jwt.verify(token, 'register')
+	if(!payload) {
+	  return res.status(401).send('Unauthorized request')    
+	}
+	console.log('s')
+	req.userId = payload.subject
+	next()
+  }
+
+
 
 router.get('/',(req, res)=>{
 	res.send('From API route')
@@ -57,7 +79,7 @@ router.get('/events', (req,res) => {
 	res.json(events)
   })
   
-  router.get('/special', (req, res) => {
+router.get('/special', verifyToken , (req, res) => {
 	let specialEvents = [
 	  {
 		"_id": "1",
@@ -107,7 +129,9 @@ router.post('/register' , (req,res)=>{
 		if(error){
 			console.log(error)
 		}else{
-			res.status(200).send(registered)
+			let payload = {subject : registered._id}
+			let token = jwt.sign(payload , 'register')
+			res.status(200).send({token})
 		}
 	})
 })
@@ -125,7 +149,9 @@ router.post('/login',(req,res)=>{
 				if(user.password != userData.password){
 					res.status(401).send('Invalid password')
 				}else{
-					res.status(200).send(user)
+					let payload = {subject : user._id}
+					let token = jwt.sign(payload , 'register')
+					res.status(200).send({token})
 				}
 			}
 		}
